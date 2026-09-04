@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-
 import connectDB from "./config/db.js";
 
 // Routes
@@ -17,6 +16,7 @@ import teacherDashboardRoutes from "./routes/teacherDashboardRoutes.js";
 import studentDashboardRoutes from "./routes/studentDashboardRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
@@ -29,17 +29,11 @@ app.use(cors());
 app.use(express.json());
 
 // ========================================
-// Database
-// ========================================
-
-await connectDB();
-
-// ========================================
 // Test Route
 // ========================================
 
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "Institute Management System Backend Running",
   });
@@ -64,7 +58,7 @@ app.use("/api/classes", classRoutes);
 // Attendance
 app.use("/api/attendance", attendanceRoutes);
 
-// Tasks (admin + teacher, ownership enforced in the controller)
+// Tasks
 app.use("/api/tasks", taskRoutes);
 
 // Task submissions
@@ -83,11 +77,48 @@ app.use("/api/dashboard/student", studentDashboardRoutes);
 app.use("/api/leaves", leaveRoutes);
 
 // ========================================
+// 404 Handler
+// ========================================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// ========================================
+// Global Error Handler
+// ========================================
+
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+// ========================================
 // Start Server
 // ========================================
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // Connect MongoDB first
+    await connectDB();
+
+    // Start server only after DB connection succeeds
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
